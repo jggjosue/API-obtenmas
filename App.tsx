@@ -4,34 +4,54 @@
  *
  * @format
  */
-
 import React, {useCallback} from 'react';
 import {useState, useEffect} from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import {ScrollView, StyleSheet, Text, View} from 'react-native';
+import {getAsyncStorageItem, saveAsyncStorageItem} from './app/api/controller/AsyncStorage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 function App(): JSX.Element {
   const [bank, setBank] = useState(null);
+  saveAsyncStorageItem('initial', '00');
 
   useEffect(() => {
-    fetch('https://dev.obtenmas.com/catom/api/challenge/banks', {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    }).then((response) => response.json())
-        .then((data) => {
-          setBank(data)
-          console.log(data);
-        })
-        .catch((error) => {
-          console.error(error);
-        });
+      console.log("Effect ran");
+      init();
   }, []);
+
+    const init = async () => {
+        const ini = await getAsyncStorageItem('initial');
+        console.log('ini: ', ini);
+        if (ini.length < 5) {
+            console.log('Remote Server');
+            fetch('https://dev.obtenmas.com/catom/api/challenge/banks', {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                }
+            }).then((response) => response.json())
+                .then((data) => {
+                    setBank(data)
+                    console.log('Remote data Server:', data);
+                    try {
+                        AsyncStorage.setItem("initial", JSON.stringify('False'));
+                        AsyncStorage.setItem("data", JSON.stringify(data));
+                        console.log('Save Data:', data);
+                    } catch (e) {
+                        console.warn(`Failed to save initial in AsyncStorage`, e);
+                        return e;
+                    }
+                })
+                .catch((error) => {
+                    console.error(error);
+                });
+        } else {
+            console.log('Remote data Local');
+            const dat = await getAsyncStorageItem('data');
+            console.log('Remote data local: ', dat);
+            setBank(JSON.stringify(dat));
+        }
+    };
 
   return (
       <ScrollView style={styles.sectionContainer}>
