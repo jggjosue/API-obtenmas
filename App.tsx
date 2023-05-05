@@ -9,26 +9,22 @@ import {useState, useEffect} from 'react';
 import {ScrollView, StyleSheet, Text, View} from 'react-native';
 import {getAsyncStorageItem, saveAsyncStorageItem} from './app/api/controller/AsyncStorage';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {DataBank} from "./app/api/model/Bank";
 
 function App(): JSX.Element {
   const [bank, setBank] = useState(null);
-  saveAsyncStorageItem('initial', '00');
 
   useEffect(() => {
-      console.log("Effect ran");
       init();
   }, []);
 
     const init = async () => {
         const ini = await getAsyncStorageItem('initial');
-        console.log('ini: ', ini);
-        if (ini.length < 5) {
+        if (ini === undefined) {
             console.log('Remote Server');
-            fetch('https://dev.obtenmas.com/catom/api/challenge/banks', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
+            fetch(DataBank.URL, {
+                method: DataBank.METHOD,
+                headers: DataBank.HEADERS
             }).then((response) => response.json())
                 .then((data) => {
                     setBank(data)
@@ -41,15 +37,23 @@ function App(): JSX.Element {
                         console.warn(`Failed to save initial in AsyncStorage`, e);
                         return e;
                     }
-                })
-                .catch((error) => {
+                }).catch((error) => {
                     console.error(error);
                 });
         } else {
-            console.log('Remote data Local');
-            const dat = await getAsyncStorageItem('data');
-            console.log('Remote data local: ', dat);
-            setBank(JSON.stringify(dat));
+            try {
+                const recoverBank = await AsyncStorage.getItem("data");
+                console.log('Recover Bank Data:', recoverBank);
+                if (recoverBank != null) {
+                    const value = JSON.parse(recoverBank);
+                    console.log('Recover Bank value:', value);
+                    if (value !== null) {
+                        setBank(value);
+                    }
+                }
+            } catch (e) {
+                console.log('Failed to fetch the input from storage', e);
+            }
         }
     };
 
